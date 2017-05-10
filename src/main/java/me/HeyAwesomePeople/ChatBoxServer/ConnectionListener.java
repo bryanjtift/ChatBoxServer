@@ -6,7 +6,6 @@ import java.net.ServerSocket;
 public class ConnectionListener implements Runnable {
 
     private Main main;
-    private boolean listen = true;
     private ServerSocket listener;
 
     ConnectionListener(Main main, ServerSocket listener) {
@@ -16,7 +15,8 @@ public class ConnectionListener implements Runnable {
 
     public void run() {
         try {
-            while (listen) {
+            //noinspection InfiniteLoopStatement
+            while (true) {
                 new Handler(main, listener.accept()).start();
             }
         } catch (IOException e) {
@@ -28,10 +28,5 @@ public class ConnectionListener implements Runnable {
                 e.printStackTrace();
             }
         }
-    }
-
-    public void stop() throws IOException {
-        listen = false;
-        listener.close();
     }
 }

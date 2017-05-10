@@ -55,16 +55,21 @@ public class UserData {
         }
     }
 
-    public String registerNewUser(String user, String pass) {
-        try {
-            PrintWriter out = new PrintWriter(f);
-            out.println(user + ":" + pass);
-            out.close();
-            return "REGISTERED";
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        }
-        return "ERROR: R0";
+    public void registerNewUser(String user, String pass) {
+        this.users.put(user, pass);
+        this.saveUserData();
+    }
+
+    public boolean isUserValid(String username) {
+        return this.users.containsKey(username);
+    }
+
+    public boolean isPasswordValid(String username, String password) {
+        return this.users.containsKey(username) && this.users.get(username).equals(password);
+    }
+
+    public boolean isUsernameTaken(String username) {
+        return this.users.containsKey(username);
     }
 
 }

@@ -9,6 +9,9 @@ import java.net.Socket;
 public class Handler extends Thread {
 
     private Main main;
+
+    private boolean loggedIn = false;
+
     private String username;
     private Socket socket;
     private BufferedReader in;
@@ -25,19 +28,18 @@ public class Handler extends Thread {
             in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             out = new PrintWriter(socket.getOutputStream(), true);
 
-            while (true) {
+            while (!loggedIn) {
                 String login = in.readLine();
                 System.out.println("data: " + login);
                 if (login == null || login.equals("")) continue;
 
                 if (login.startsWith("REGISTER")) {
                     String[] data = login.substring(9).split(":");
-                    if (main.userData.users.containsKey(data[0])) {
+                    if (main.userData.isUsernameTaken(data[0])) {
                         out.println("USERNAMETAKEN");
                     } else {
                         synchronized (this) {
-                            main.userData.users.put(data[0], data[1]);
-                            main.userData.saveUserData();
+                            main.userData.registerNewUser(data[0], data[1]);
                         }
                         out.println("REGISTERSUCCESS");
                     }
@@ -47,10 +49,14 @@ public class Handler extends Thread {
                         continue;
                     }
                     String[] data = login.substring(6).split(":");
-                    if (main.userData.users.containsKey(data[0])) {
-                        if (main.userData.users.get(data[0]).equals(data[1])) {
+                    if (main.userData.isUserValid(data[0])) {
+                        if (main.userData.isPasswordValid(data[0], data[1])) {
                             out.println("LOGINACCEPTED");
-                            username = data[0];
+
+                            setUsername(data[0]);
+                            main.writers.add(out);
+                            loggedIn = true;
+
                             break;
                         } else {
                             out.println("PASSWORDINVALID");
@@ -63,12 +69,16 @@ public class Handler extends Thread {
 
             main.writers.add(out);
 
-            while (true) {
+            while (loggedIn) {
                 String input = in.readLine();
+                System.out.println("data: " + input);
                 if (input == null || input.equals("")) return;
 
                 if (input.startsWith("LOGOUT")) {
-                    data = input.substring(7);
+                    main.writers.remove(out);
+                    loggedIn = false;
+                    setUsername("");
+                    break;
                 }
 
                 for (PrintWriter writer : Main.writers) {
@@ -91,6 +101,10 @@ public class Handler extends Thread {
             }
         }
 
+    }
+
+    private void setUsername(String s) {
+        this.username = s;
     }
 
 }
