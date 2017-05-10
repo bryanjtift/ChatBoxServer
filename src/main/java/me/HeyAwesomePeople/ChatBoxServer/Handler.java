@@ -28,7 +28,7 @@ public class Handler extends Thread {
             in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             out = new PrintWriter(socket.getOutputStream(), true);
 
-            while (!loggedIn) {
+            while (true) {
                 String login = in.readLine();
                 System.out.println("data: " + login);
                 if (login == null || login.equals("")) continue;
@@ -55,34 +55,28 @@ public class Handler extends Thread {
 
                             setUsername(data[0]);
                             main.writers.add(out);
+                            for (PrintWriter writer : Main.writers) {
+                                if (writer == out) continue;
+                                writer.println("USERJOIN " + username);
+                            }
                             loggedIn = true;
 
-                            break;
                         } else {
                             out.println("PASSWORDINVALID");
                         }
                     } else {
                         out.println("USERNAMEINVALID");
                     }
-                }
-            }
-
-            main.writers.add(out);
-
-            while (loggedIn) {
-                String input = in.readLine();
-                System.out.println("data: " + input);
-                if (input == null || input.equals("")) return;
-
-                if (input.startsWith("LOGOUT")) {
+                } else if (login.startsWith("OUT")) {
+                    if (loggedIn) {
+                        for (PrintWriter writer : Main.writers) {
+                            writer.println("MESSAGE " + username + ": " + login.substring(4));
+                        }
+                    }
+                } else if (login.startsWith("LOGOUT")) {
                     main.writers.remove(out);
                     loggedIn = false;
                     setUsername("");
-                    break;
-                }
-
-                for (PrintWriter writer : Main.writers) {
-                    writer.println("MESSAGE " + username + ": " + input);
                 }
             }
 
