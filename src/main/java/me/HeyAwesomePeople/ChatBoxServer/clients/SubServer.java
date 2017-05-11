@@ -1,4 +1,6 @@
-package me.HeyAwesomePeople.ChatBoxServer;
+package me.HeyAwesomePeople.ChatBoxServer.clients;
+
+import me.HeyAwesomePeople.ChatBoxServer.Main;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -6,29 +8,59 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
 
-public class Handler extends Thread {
+public class SubServer extends Thread {
 
-    private Main main;
+    final private Main main;
+    final private Socket socket;
+    final private int id;
 
     private boolean loggedIn = false;
 
     private String username;
-    private Socket socket;
     private BufferedReader in;
     private PrintWriter out;
-    private String data;
 
-    public Handler(Main main, Socket socket) {
+    final private String LOGIN = "0x01";
+    final private String REGISTER = "0x02";
+    final private String COMMAND = "0x03";
+
+    public SubServer (Main main, Socket socket, int id) {
         this.main = main;
         this.socket = socket;
+        this.id = id;
+
+        start();
     }
 
+    @Override
     public void run() {
         try {
             in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             out = new PrintWriter(socket.getOutputStream(), true);
 
+            System.out.println("connect.");
+            String line;
             while (true) {
+                line = in.readLine();
+                String protocol = line.substring(0, 4);
+                System.out.println("data: " + line);
+                System.out.println("data, substring 5: " + line.substring(5));
+                System.out.println("data, cmd: " + protocol);
+                switch (protocol) {
+                    case LOGIN:
+                        processLogin(line.substring(5));
+                        break;
+                    case REGISTER:
+                        processRegister(line.substring(5));
+                        break;
+                    case COMMAND:
+                        processCommand(line.substring(5));
+                        break;
+                }
+            }
+
+            /*
+            while (!this.isInterrupted()) {
                 String login = in.readLine();
                 System.out.println("data: " + login);
                 if (login == null || login.equals("")) continue;
@@ -79,6 +111,7 @@ public class Handler extends Thread {
                     setUsername("");
                 }
             }
+            */
 
         } catch (IOException e) {
             e.printStackTrace();
@@ -95,6 +128,68 @@ public class Handler extends Thread {
             }
         }
 
+    }
+
+    public void processLogin(String line) {
+        if (!line.contains(":")) {
+            out.println("INVALIDLOGIN");
+            return;
+        }
+        String[] data = line.split(":");
+        String username = data[0];
+        String password = data[1];
+        if (main.userData.isUserValid(username)) {
+            if (main.userData.isPasswordValid(username, password)) {
+                out.println("LOGINACCEPTED");
+
+                setUsername(username);
+                main.writers.add(out);
+                for (PrintWriter writer : Main.writers) {
+                    if (writer == out) continue;
+                    writer.println("USERJOIN " + username);
+                }
+                loggedIn = true;
+
+            } else {
+                out.println("PASSWORDINVALID");
+            }
+        } else {
+            out.println("USERNAMEINVALID");
+        }
+    }
+
+    public void processRegister(String line) {
+        String[] data = line.split(":");
+        String username = data[0];
+        String password = data[1];
+        if (main.userData.isUsernameTaken(username)) {
+            out.println("USERNAMETAKEN");
+        } else {
+            synchronized (this) {
+                main.userData.registerNewUser(username, password);
+            }
+            out.println("REGISTERSUCCESS");
+        }
+    }
+
+    public void processCommand(String line) {
+        if (line.startsWith("OUT")) {
+            if (loggedIn) {
+                for (PrintWriter writer : Main.writers) {
+                    writer.println("MESSAGE " + username + ": " + line.substring(4));
+                }
+            }
+        } else if (line.startsWith("LOGOUT")) {
+            main.writers.remove(out);
+            loggedIn = false;
+            setUsername("");
+        }
+    }
+
+    public void close() {
+        try {
+            this.socket.close();
+        } catch (IOException ignored) { }
     }
 
     private void setUsername(String s) {

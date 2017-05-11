@@ -1,5 +1,6 @@
 package me.HeyAwesomePeople.ChatBoxServer;
 
+import me.HeyAwesomePeople.ChatBoxServer.serversettings.ServerSettings;
 import me.HeyAwesomePeople.ChatBoxServer.userdata.UserData;
 
 import java.io.IOException;
@@ -10,13 +11,13 @@ import java.util.HashSet;
 public class Main {
 
     public UserData userData;
-    private ServerSettings settings;
+    public ServerSettings settings;
 
     private ConnectionListener connectionListener;
 
     private ServerSocket listener;
-    static final HashSet<String> names = new HashSet<String>();
-    static final HashSet<PrintWriter> writers = new HashSet<PrintWriter>();
+    public static final HashSet<String> names = new HashSet<String>();
+    public static final HashSet<PrintWriter> writers = new HashSet<PrintWriter>();
 
     private Main() {
         userData = new UserData();
